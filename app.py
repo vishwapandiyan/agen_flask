@@ -3,12 +3,12 @@ import requests
 import os
 from dotenv import load_dotenv
 
-
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
-
+# Configuration
 SLACK_BOT = os.getenv("SLACK_BOT_TOKEN")
 CHANNEL_ID = os.getenv("SLACK_CHANNEL")
 ML_MODEL_URL = "http://localhost:5000/generate"  # ML model endpoint
@@ -32,7 +32,7 @@ def get_username_from_user_id(user_id):
 def handle_slack_messages():
     """Endpoint to fetch and process Slack messages"""
     try:
-        # get messages from slack
+        # Fetch messages from Slack
         slack_response = requests.get(
             "https://slack.com/api/conversations.history",
             headers={"Authorization": f"Bearer {SLACK_BOT}"},
@@ -42,22 +42,22 @@ def handle_slack_messages():
         
         messages = []
         for msg in slack_response.json().get("messages", []):
-            if "subtype" in msg:  # remove sub mesage
+            if "subtype" in msg:  # Skip system messages
                 continue
 
-            # extract message data
+            # Extract message data
             user_id = msg.get("user") or msg.get("bot_profile", {}).get("user_id")
             username = (msg["bot_profile"]["name"] 
                        if "bot_profile" in msg 
                        else get_username_from_user_id(user_id))
             text = msg.get("text", "")
 
-            # ml process
+            # Process with ML model
             try:
                 ml_response = requests.post(
                     ML_MODEL_URL,
                     json={"text": text},
-                    timeout=5  
+                    timeout=5  # 5 second timeout
                 )
                 ml_response.raise_for_status()
                 ml_output = ml_response.json().get("output", "")
@@ -91,7 +91,6 @@ def health_check():
     """Simple health check endpoint"""
     return jsonify({"status": "healthy"})
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False) 
+    port = int(os.getenv("PORT", 3000))
+    app.run(host="0.0.0.0", port=port, debug=True)
